@@ -89,414 +89,197 @@ public class IHC_Profiler implements PlugIn {
         byte[] gLUT = new byte[256];
         byte[] bLUT = new byte[256];
 
-        if (myMode.equals(MODES[0])) {
+        // define stains
+        if (myStain.equals(STAINS[0])) {
+            makeVectorHDAB(MODx, MODy, MODz);
+        }
 
-            // define stains
-            if (myStain.equals(STAINS[0])) {
-                // 3,3-diamino-benzidine tetrahydrochloride
-                // Haem matrix
-                MODx[0] = 0.684;
-                MODy[0] = 0.696;
-                MODz[0] = 0.183;
-                // DAB matrix
-                MODx[1] = 0.250;
-                MODy[1] = 0.500;
-                MODz[1] = 0.850;
-                // Zero matrix
-                MODx[2] = 0.0;
-                MODy[2] = 0.0;
-                MODz[2] = 0.0;
+        // start
+        for (i = 0; i < 3; i++) {
+            //normalise vector length
+            cosx[i] = cosy[i] = cosz[i] = 0.0;
+            len[i] = Math.sqrt(MODx[i] * MODx[i] + MODy[i] * MODy[i] + MODz[i] * MODz[i]);
+            if (len[i] != 0.0) {
+                cosx[i] = MODx[i] / len[i];
+                cosy[i] = MODy[i] / len[i];
+                cosz[i] = MODz[i] / len[i];
             }
+        }
 
-            // start
-            for (i = 0; i < 3; i++) {
-                //normalise vector length
-                cosx[i] = cosy[i] = cosz[i] = 0.0;
-                len[i] = Math.sqrt(MODx[i] * MODx[i] + MODy[i] * MODy[i] + MODz[i] * MODz[i]);
-                if (len[i] != 0.0) {
-                    cosx[i] = MODx[i] / len[i];
-                    cosy[i] = MODy[i] / len[i];
-                    cosz[i] = MODz[i] / len[i];
+        // translation matrix
+        if (cosx[1] == 0.0) { //2nd colour is unspecified
+            if (cosy[1] == 0.0) {
+                if (cosz[1] == 0.0) {
+                    cosx[1] = cosz[0];
+                    cosy[1] = cosx[0];
+                    cosz[1] = cosy[0];
                 }
             }
+        }
 
-            // translation matrix
-            if (cosx[1] == 0.0) { //2nd colour is unspecified
-                if (cosy[1] == 0.0) {
-                    if (cosz[1] == 0.0) {
-                        cosx[1] = cosz[0];
-                        cosy[1] = cosx[0];
-                        cosz[1] = cosy[0];
+        if (cosx[2] == 0.0) { // 3rd colour is unspecified
+            if (cosy[2] == 0.0) {
+                if (cosz[2] == 0.0) {
+                    if ((cosx[0] * cosx[0] + cosx[1] * cosx[1]) > 1) {
+                        if (doIshow)
+                            IJ.log("Colour_3 has a negative R component.");
+                        cosx[2] = 0.0;
+                    } else {
+                        cosx[2] = Math.sqrt(1.0 - (cosx[0] * cosx[0]) - (cosx[1] * cosx[1]));
+                    }
+
+                    if ((cosy[0] * cosy[0] + cosy[1] * cosy[1]) > 1) {
+                        if (doIshow)
+                            IJ.log("Colour_3 has a negative G component.");
+                        cosy[2] = 0.0;
+                    } else {
+                        cosy[2] = Math.sqrt(1.0 - (cosy[0] * cosy[0]) - (cosy[1] * cosy[1]));
+                    }
+
+                    if ((cosz[0] * cosz[0] + cosz[1] * cosz[1]) > 1) {
+                        if (doIshow)
+                            IJ.log("Colour_3 has a negative B component.");
+                        cosz[2] = 0.0;
+                    } else {
+                        cosz[2] = Math.sqrt(1.0 - (cosz[0] * cosz[0]) - (cosz[1] * cosz[1]));
                     }
                 }
             }
+        }
 
-            if (cosx[2] == 0.0) { // 3rd colour is unspecified
-                if (cosy[2] == 0.0) {
-                    if (cosz[2] == 0.0) {
-                        if ((cosx[0] * cosx[0] + cosx[1] * cosx[1]) > 1) {
-                            if (doIshow)
-                                IJ.log("Colour_3 has a negative R component.");
-                            cosx[2] = 0.0;
-                        } else {
-                            cosx[2] = Math.sqrt(1.0 - (cosx[0] * cosx[0]) - (cosx[1] * cosx[1]));
-                        }
+        leng = Math.sqrt(cosx[2] * cosx[2] + cosy[2] * cosy[2] + cosz[2] * cosz[2]);
 
-                        if ((cosy[0] * cosy[0] + cosy[1] * cosy[1]) > 1) {
-                            if (doIshow)
-                                IJ.log("Colour_3 has a negative G component.");
-                            cosy[2] = 0.0;
-                        } else {
-                            cosy[2] = Math.sqrt(1.0 - (cosy[0] * cosy[0]) - (cosy[1] * cosy[1]));
-                        }
+        cosx[2] = cosx[2] / leng;
+        cosy[2] = cosy[2] / leng;
+        cosz[2] = cosz[2] / leng;
 
-                        if ((cosz[0] * cosz[0] + cosz[1] * cosz[1]) > 1) {
-                            if (doIshow)
-                                IJ.log("Colour_3 has a negative B component.");
-                            cosz[2] = 0.0;
-                        } else {
-                            cosz[2] = Math.sqrt(1.0 - (cosz[0] * cosz[0]) - (cosz[1] * cosz[1]));
-                        }
-                    }
-                }
-            }
+        for (i = 0; i < 3; i++) {
+            if (cosx[i] == 0.0) cosx[i] = 0.001;
+            if (cosy[i] == 0.0) cosy[i] = 0.001;
+            if (cosz[i] == 0.0) cosz[i] = 0.001;
+        }
 
-            leng = Math.sqrt(cosx[2] * cosx[2] + cosy[2] * cosy[2] + cosz[2] * cosz[2]);
-
-            cosx[2] = cosx[2] / leng;
-            cosy[2] = cosy[2] / leng;
-            cosz[2] = cosz[2] / leng;
+        if (!hideLegend) {
+            ImagePlus imp0 = NewImage.createRGBImage("IHC Profiler", 350, 65, 1, 0);
+            ImageProcessor ip0 = imp0.getProcessor();
+            ip0.setFont(new Font("Monospaced", Font.BOLD, 11));
+            ip0.setAntialiasedText(true);
+            ip0.setColor(Color.black);
+            ip0.moveTo(10, 15);
+            ip0.drawString("Colour deconvolution: " + myStain);
+            ip0.setFont(new Font("Monospaced", Font.PLAIN, 10));
 
             for (i = 0; i < 3; i++) {
-                if (cosx[i] == 0.0) cosx[i] = 0.001;
-                if (cosy[i] == 0.0) cosy[i] = 0.001;
-                if (cosz[i] == 0.0) cosz[i] = 0.001;
-            }
-
-            if (!hideLegend) {
-                ImagePlus imp0 = NewImage.createRGBImage("Color Deconvolution", 350, 65, 1, 0);
-                ImageProcessor ip0 = imp0.getProcessor();
-                ip0.setFont(new Font("Monospaced", Font.BOLD, 11));
+                ip0.setRoi(10, 18 + i * 15, 14, 14);
+                ip0.setColor(
+                        (((255 - (int) (255.0 * cosx[i])) & 0xff) << 16) +
+                                (((255 - (int) (255.0 * cosy[i])) & 0xff) << 8) +
+                                (((255 - (int) (255.0 * cosz[i])) & 0xff)));
+                ip0.fill();
+                ip0.setFont(new Font("Monospaced", Font.PLAIN, 10));
                 ip0.setAntialiasedText(true);
                 ip0.setColor(Color.black);
-                ip0.moveTo(10, 15);
-                ip0.drawString("Colour deconvolution: " + myStain);
-                ip0.setFont(new Font("Monospaced", Font.PLAIN, 10));
-
-                for (i = 0; i < 3; i++) {
-                    ip0.setRoi(10, 18 + i * 15, 14, 14);
-                    ip0.setColor(
-                            (((255 - (int) (255.0 * cosx[i])) & 0xff) << 16) +
-                                    (((255 - (int) (255.0 * cosy[i])) & 0xff) << 8) +
-                                    (((255 - (int) (255.0 * cosz[i])) & 0xff)));
-                    ip0.fill();
-                    ip0.setFont(new Font("Monospaced", Font.PLAIN, 10));
-                    ip0.setAntialiasedText(true);
-                    ip0.setColor(Color.black);
-                    ip0.moveTo(27, 32 + i * 15);
-                    ip0.drawString("Colour_" + (i + 1) + " R:" + (float) cosx[i] + ", G:" + (float) cosy[i] + ", B:" + (float) cosz[i]);
-                }
-                imp0.show();
-                imp0.updateAndDraw();
+                ip0.moveTo(27, 32 + i * 15);
+                ip0.drawString("Colour_" + (i + 1) + " R:" + (float) cosx[i] + ", G:" + (float) cosy[i] + ", B:" + (float) cosz[i]);
             }
+            imp0.show();
+            imp0.updateAndDraw();
+        }
 
-
-            if (doIshow) {
-                IJ.log(myStain + " Vector Matrix ---");
-                for (i = 0; i < 3; i++) {
-                    IJ.log("Colour[" + (i + 1) + "]:\n" +
-                            "  R" + (i + 1) + ": " + (float) MODx[i] + "\n" +
-                            "  G" + (i + 1) + ": " + (float) MODy[i] + "\n" +
-                            "  B" + (i + 1) + ": " + (float) MODz[i] + "\n \n");
-                }
-
-                IJ.log(myStain + " Java code ---");
-                IJ.log("\t\tif (myStain.equals(\"New_Stain\")){");
-                IJ.log("\t\t// This is the New_Stain");
-                for (i = 0; i < 3; i++) {
-                    IJ.log("\t\t\tMODx[" + i + "]=" + (float) cosx[i] + ";\n" +
-                            "\t\t\tMODy[" + i + "]=" + (float) cosy[i] + ";\n" +
-                            "\t\t\tMODz[" + i + "]=" + (float) cosz[i] + ";\n\n");
-                }
-                IJ.log("}");
-            }
-
-            //matrix inversion
-            A = cosy[1] - cosx[1] * cosy[0] / cosx[0];
-            V = cosz[1] - cosx[1] * cosz[0] / cosx[0];
-            C = cosz[2] - cosy[2] * V / A + cosx[2] * (V / A * cosy[0] / cosx[0] - cosz[0] / cosx[0]);
-            q[2] = (-cosx[2] / cosx[0] - cosx[2] / A * cosx[1] / cosx[0] * cosy[0] / cosx[0] + cosy[2] / A * cosx[1] / cosx[0]) / C;
-            q[1] = -q[2] * V / A - cosx[1] / (cosx[0] * A);
-            q[0] = 1.0 / cosx[0] - q[1] * cosy[0] / cosx[0] - q[2] * cosz[0] / cosx[0];
-            q[5] = (-cosy[2] / A + cosx[2] / A * cosy[0] / cosx[0]) / C;
-            q[4] = -q[5] * V / A + 1.0 / A;
-            q[3] = -q[4] * cosy[0] / cosx[0] - q[5] * cosz[0] / cosx[0];
-            q[8] = 1.0 / C;
-            q[7] = -q[8] * V / A;
-            q[6] = -q[7] * cosy[0] / cosx[0] - q[8] * cosz[0] / cosx[0];
-
-            // initialize 3 output colour stacks
-            ImageStack[] outputstack = new ImageStack[3];
+        if (doIshow) {
+            IJ.log(myStain + " Vector Matrix ---");
             for (i = 0; i < 3; i++) {
-                for (j = 0; j < 256; j++) {
-                    rLUT[255 - j] = (byte) (255.0 - (double) j * cosx[i]);
-
-
-                    gLUT[255 - j] = (byte) (255.0 - (double) j * cosy[i]);
-
-
-                    bLUT[255 - j] = (byte) (255.0 - (double) j * cosz[i]);
-                }
-                IndexColorModel cm = new IndexColorModel(8, 256, rLUT, gLUT, bLUT);
-                outputstack[i] = new ImageStack(width, height, cm);
+                IJ.log("Colour[" + (i + 1) + "]:\n" +
+                        "  R" + (i + 1) + ": " + (float) MODx[i] + "\n" +
+                        "  G" + (i + 1) + ": " + (float) MODy[i] + "\n" +
+                        "  B" + (i + 1) + ": " + (float) MODz[i] + "\n \n");
             }
 
-            // translate ------------------
-            int imagesize = width * height;
-            for (int imagenum = 1; imagenum <= stack.getSize(); imagenum++) {
-                int[] pixels = (int[]) stack.getPixels(imagenum);
-                String label = stack.getSliceLabel(imagenum);
-                byte[][] newpixels = new byte[3][];
-                newpixels[0] = new byte[imagesize];
-                newpixels[1] = new byte[imagesize];
-                newpixels[2] = new byte[imagesize];
-
-                for (j = 0; j < imagesize; j++) {
-                    // log transform the RGB data
-                    int R = (pixels[j] & 0xff0000) >> 16;
-                    int G = (pixels[j] & 0x00ff00) >> 8;
-                    int B = (pixels[j] & 0x0000ff);
-                    double Rlog = -((255.0 * Math.log(((double) R + 1) / 255.0)) / log255);
-                    double Glog = -((255.0 * Math.log(((double) G + 1) / 255.0)) / log255);
-                    double Blog = -((255.0 * Math.log(((double) B + 1) / 255.0)) / log255);
-                    for (i = 0; i < 3; i++) {
-                        // rescale to match original paper values
-                        double Rscaled = Rlog * q[i * 3];
-                        double Gscaled = Glog * q[i * 3 + 1];
-                        double Bscaled = Blog * q[i * 3 + 2];
-                        double output = Math.exp(-((Rscaled + Gscaled + Bscaled) - 255.0) * log255 / 255.0);
-                        if (output > 255) output = 255;
-                        newpixels[i][j] = (byte) (0xff & (int) (Math.floor(output + .5)));
-                    }
-                }
-                // add new values to output images
-                outputstack[0].addSlice(label, newpixels[0]);
-                outputstack[1].addSlice(label, newpixels[1]);
-                outputstack[2].addSlice(label, newpixels[2]);
+            IJ.log(myStain + " Java code ---");
+            IJ.log("\t\tif (myStain.equals(\"New_Stain\")){");
+            IJ.log("\t\t// This is the New_Stain");
+            for (i = 0; i < 3; i++) {
+                IJ.log("\t\t\tMODx[" + i + "]=" + (float) cosx[i] + ";\n" +
+                        "\t\t\tMODy[" + i + "]=" + (float) cosy[i] + ";\n" +
+                        "\t\t\tMODz[" + i + "]=" + (float) cosz[i] + ";\n\n");
             }
-            new ImagePlus(title + "-(Hematoxylin Stain)", outputstack[0]).show();
-            new ImagePlus(title + "-(DAB Stain)", outputstack[1]).show();
-            //new ImagePlus(title+"-(Colour_3)",outputstack[2]).show();
+            IJ.log("}");
+        }
+
+        //matrix inversion
+        A = cosy[1] - cosx[1] * cosy[0] / cosx[0];
+        V = cosz[1] - cosx[1] * cosz[0] / cosx[0];
+        C = cosz[2] - cosy[2] * V / A + cosx[2] * (V / A * cosy[0] / cosx[0] - cosz[0] / cosx[0]);
+        q[2] = (-cosx[2] / cosx[0] - cosx[2] / A * cosx[1] / cosx[0] * cosy[0] / cosx[0] + cosy[2] / A * cosx[1] / cosx[0]) / C;
+        q[1] = -q[2] * V / A - cosx[1] / (cosx[0] * A);
+        q[0] = 1.0 / cosx[0] - q[1] * cosy[0] / cosx[0] - q[2] * cosz[0] / cosx[0];
+        q[5] = (-cosy[2] / A + cosx[2] / A * cosy[0] / cosx[0]) / C;
+        q[4] = -q[5] * V / A + 1.0 / A;
+        q[3] = -q[4] * cosy[0] / cosx[0] - q[5] * cosz[0] / cosx[0];
+        q[8] = 1.0 / C;
+        q[7] = -q[8] * V / A;
+        q[6] = -q[7] * cosy[0] / cosx[0] - q[8] * cosz[0] / cosx[0];
+
+        // initialize 3 output colour stacks
+        ImageStack[] outputstack = new ImageStack[3];
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 256; j++) {
+                rLUT[255 - j] = (byte) (255.0 - (double) j * cosx[i]);
+                gLUT[255 - j] = (byte) (255.0 - (double) j * cosy[i]);
+                bLUT[255 - j] = (byte) (255.0 - (double) j * cosz[i]);
+            }
+            IndexColorModel cm = new IndexColorModel(8, 256, rLUT, gLUT, bLUT);
+            outputstack[i] = new ImageStack(width, height, cm);
+        }
+
+        // translate ------------------
+        int imagesize = width * height;
+        for (int imagenum = 1; imagenum <= stack.getSize(); imagenum++) {
+            int[] pixels = (int[]) stack.getPixels(imagenum);
+            String label = stack.getSliceLabel(imagenum);
+            byte[][] newpixels = new byte[3][];
+            newpixels[0] = new byte[imagesize];
+            newpixels[1] = new byte[imagesize];
+            newpixels[2] = new byte[imagesize];
+
+            for (j = 0; j < imagesize; j++) {
+                // log transform the RGB data
+                int R = (pixels[j] & 0xff0000) >> 16;
+                int G = (pixels[j] & 0x00ff00) >> 8;
+                int B = (pixels[j] & 0x0000ff);
+                double Rlog = -((255.0 * Math.log(((double) R + 1) / 255.0)) / log255);
+                double Glog = -((255.0 * Math.log(((double) G + 1) / 255.0)) / log255);
+                double Blog = -((255.0 * Math.log(((double) B + 1) / 255.0)) / log255);
+                for (i = 0; i < 3; i++) {
+                    // rescale to match original paper values
+                    double Rscaled = Rlog * q[i * 3];
+                    double Gscaled = Glog * q[i * 3 + 1];
+                    double Bscaled = Blog * q[i * 3 + 2];
+                    double output = Math.exp(-((Rscaled + Gscaled + Bscaled) - 255.0) * log255 / 255.0);
+                    if (output > 255) output = 255;
+                    newpixels[i][j] = (byte) (0xff & (int) (Math.floor(output + .5)));
+                }
+            }
+            // add new values to output images
+            outputstack[0].addSlice(label, newpixels[0]);
+            outputstack[1].addSlice(label, newpixels[1]);
+            outputstack[2].addSlice(label, newpixels[2]);
+        }
+        new ImagePlus(title + "-(Hematoxylin Stain)", outputstack[0]).show();
+        new ImagePlus(title + "-(DAB Stain)", outputstack[1]).show();
+        //new ImagePlus(title+"-(Colour_3)",outputstack[2]).show();
+
+        if (myMode.equals(MODES[0])) {
 
             IJ.runMacroFile("IHC_Profiler", null);
 
-
-        } //end cytoplasmic
-
-
-        if (myMode.equals(MODES[1])) {
-
-            // define stains
-            if (myStain.equals(STAINS[0])) {
-                // 3,3-diamino-benzidine tetrahydrochloride
-                // Haem matrix
-                MODx[0] = 0.684;
-                MODy[0] = 0.696;
-                MODz[0] = 0.183;
-                // DAB matrix
-                MODx[1] = 0.250;
-                MODy[1] = 0.500;
-                MODz[1] = 0.850;
-                // Zero matrix
-                MODx[2] = 0.0;
-                MODy[2] = 0.0;
-                MODz[2] = 0.0;
-            }
-
-            // start
-            for (i = 0; i < 3; i++) {
-                //normalise vector length
-                cosx[i] = cosy[i] = cosz[i] = 0.0;
-                len[i] = Math.sqrt(MODx[i] * MODx[i] + MODy[i] * MODy[i] + MODz[i] * MODz[i]);
-                if (len[i] != 0.0) {
-                    cosx[i] = MODx[i] / len[i];
-                    cosy[i] = MODy[i] / len[i];
-                    cosz[i] = MODz[i] / len[i];
-                }
-            }
-
-
-            // translation matrix
-            if (cosx[1] == 0.0) { //2nd colour is unspecified
-                if (cosy[1] == 0.0) {
-                    if (cosz[1] == 0.0) {
-                        cosx[1] = cosz[0];
-                        cosy[1] = cosx[0];
-                        cosz[1] = cosy[0];
-                    }
-                }
-            }
-
-            if (cosx[2] == 0.0) { // 3rd colour is unspecified
-                if (cosy[2] == 0.0) {
-                    if (cosz[2] == 0.0) {
-                        if ((cosx[0] * cosx[0] + cosx[1] * cosx[1]) > 1) {
-                            if (doIshow)
-                                IJ.log("Colour_3 has a negative R component.");
-                            cosx[2] = 0.0;
-                        } else {
-                            cosx[2] = Math.sqrt(1.0 - (cosx[0] * cosx[0]) - (cosx[1] * cosx[1]));
-                        }
-
-                        if ((cosy[0] * cosy[0] + cosy[1] * cosy[1]) > 1) {
-                            if (doIshow)
-                                IJ.log("Colour_3 has a negative G component.");
-                            cosy[2] = 0.0;
-                        } else {
-                            cosy[2] = Math.sqrt(1.0 - (cosy[0] * cosy[0]) - (cosy[1] * cosy[1]));
-                        }
-
-                        if ((cosz[0] * cosz[0] + cosz[1] * cosz[1]) > 1) {
-                            if (doIshow)
-                                IJ.log("Colour_3 has a negative B component.");
-                            cosz[2] = 0.0;
-                        } else {
-                            cosz[2] = Math.sqrt(1.0 - (cosz[0] * cosz[0]) - (cosz[1] * cosz[1]));
-                        }
-                    }
-                }
-            }
-
-            leng = Math.sqrt(cosx[2] * cosx[2] + cosy[2] * cosy[2] + cosz[2] * cosz[2]);
-
-            cosx[2] = cosx[2] / leng;
-            cosy[2] = cosy[2] / leng;
-            cosz[2] = cosz[2] / leng;
-
-            for (i = 0; i < 3; i++) {
-                if (cosx[i] == 0.0) cosx[i] = 0.001;
-                if (cosy[i] == 0.0) cosy[i] = 0.001;
-                if (cosz[i] == 0.0) cosz[i] = 0.001;
-            }
-
-            if (!hideLegend) {
-                ImagePlus imp0 = NewImage.createRGBImage("IHC Profiler", 350, 65, 1, 0);
-                ImageProcessor ip0 = imp0.getProcessor();
-                ip0.setFont(new Font("Monospaced", Font.BOLD, 11));
-                ip0.setAntialiasedText(true);
-                ip0.setColor(Color.black);
-                ip0.moveTo(10, 15);
-                ip0.drawString("Colour deconvolution: " + myStain);
-                ip0.setFont(new Font("Monospaced", Font.PLAIN, 10));
-
-                for (i = 0; i < 3; i++) {
-                    ip0.setRoi(10, 18 + i * 15, 14, 14);
-                    ip0.setColor(
-                            (((255 - (int) (255.0 * cosx[i])) & 0xff) << 16) +
-                                    (((255 - (int) (255.0 * cosy[i])) & 0xff) << 8) +
-                                    (((255 - (int) (255.0 * cosz[i])) & 0xff)));
-                    ip0.fill();
-                    ip0.setFont(new Font("Monospaced", Font.PLAIN, 10));
-                    ip0.setAntialiasedText(true);
-                    ip0.setColor(Color.black);
-                    ip0.moveTo(27, 32 + i * 15);
-                    ip0.drawString("Colour_" + (i + 1) + " R:" + (float) cosx[i] + ", G:" + (float) cosy[i] + ", B:" + (float) cosz[i]);
-                }
-                imp0.show();
-                imp0.updateAndDraw();
-            }
-
-            if (doIshow) {
-                IJ.log(myStain + " Vector Matrix ---");
-                for (i = 0; i < 3; i++) {
-                    IJ.log("Colour[" + (i + 1) + "]:\n" +
-                            "  R" + (i + 1) + ": " + (float) MODx[i] + "\n" +
-                            "  G" + (i + 1) + ": " + (float) MODy[i] + "\n" +
-                            "  B" + (i + 1) + ": " + (float) MODz[i] + "\n \n");
-                }
-
-                IJ.log(myStain + " Java code ---");
-                IJ.log("\t\tif (myStain.equals(\"New_Stain\")){");
-                IJ.log("\t\t// This is the New_Stain");
-                for (i = 0; i < 3; i++) {
-                    IJ.log("\t\t\tMODx[" + i + "]=" + (float) cosx[i] + ";\n" +
-                            "\t\t\tMODy[" + i + "]=" + (float) cosy[i] + ";\n" +
-                            "\t\t\tMODz[" + i + "]=" + (float) cosz[i] + ";\n\n");
-                }
-                IJ.log("}");
-            }
-
-            //matrix inversion
-            A = cosy[1] - cosx[1] * cosy[0] / cosx[0];
-            V = cosz[1] - cosx[1] * cosz[0] / cosx[0];
-            C = cosz[2] - cosy[2] * V / A + cosx[2] * (V / A * cosy[0] / cosx[0] - cosz[0] / cosx[0]);
-            q[2] = (-cosx[2] / cosx[0] - cosx[2] / A * cosx[1] / cosx[0] * cosy[0] / cosx[0] + cosy[2] / A * cosx[1] / cosx[0]) / C;
-            q[1] = -q[2] * V / A - cosx[1] / (cosx[0] * A);
-            q[0] = 1.0 / cosx[0] - q[1] * cosy[0] / cosx[0] - q[2] * cosz[0] / cosx[0];
-            q[5] = (-cosy[2] / A + cosx[2] / A * cosy[0] / cosx[0]) / C;
-            q[4] = -q[5] * V / A + 1.0 / A;
-            q[3] = -q[4] * cosy[0] / cosx[0] - q[5] * cosz[0] / cosx[0];
-            q[8] = 1.0 / C;
-            q[7] = -q[8] * V / A;
-            q[6] = -q[7] * cosy[0] / cosx[0] - q[8] * cosz[0] / cosx[0];
-
-            // initialize 3 output colour stacks
-            ImageStack[] outputstack = new ImageStack[3];
-            for (i = 0; i < 3; i++) {
-                for (j = 0; j < 256; j++) {
-                    rLUT[255 - j] = (byte) (255.0 - (double) j * cosx[i]);
-
-
-                    gLUT[255 - j] = (byte) (255.0 - (double) j * cosy[i]);
-
-
-                    bLUT[255 - j] = (byte) (255.0 - (double) j * cosz[i]);
-                }
-                IndexColorModel cm = new IndexColorModel(8, 256, rLUT, gLUT, bLUT);
-                outputstack[i] = new ImageStack(width, height, cm);
-            }
-
-            // translate ------------------
-            int imagesize = width * height;
-            for (int imagenum = 1; imagenum <= stack.getSize(); imagenum++) {
-                int[] pixels = (int[]) stack.getPixels(imagenum);
-                String label = stack.getSliceLabel(imagenum);
-                byte[][] newpixels = new byte[3][];
-                newpixels[0] = new byte[imagesize];
-                newpixels[1] = new byte[imagesize];
-                newpixels[2] = new byte[imagesize];
-
-                for (j = 0; j < imagesize; j++) {
-                    // log transform the RGB data
-                    int R = (pixels[j] & 0xff0000) >> 16;
-                    int G = (pixels[j] & 0x00ff00) >> 8;
-                    int B = (pixels[j] & 0x0000ff);
-                    double Rlog = -((255.0 * Math.log(((double) R + 1) / 255.0)) / log255);
-                    double Glog = -((255.0 * Math.log(((double) G + 1) / 255.0)) / log255);
-                    double Blog = -((255.0 * Math.log(((double) B + 1) / 255.0)) / log255);
-                    for (i = 0; i < 3; i++) {
-                        // rescale to match original paper values
-                        double Rscaled = Rlog * q[i * 3];
-                        double Gscaled = Glog * q[i * 3 + 1];
-                        double Bscaled = Blog * q[i * 3 + 2];
-                        double output = Math.exp(-((Rscaled + Gscaled + Bscaled) - 255.0) * log255 / 255.0);
-                        if (output > 255) output = 255;
-                        newpixels[i][j] = (byte) (0xff & (int) (Math.floor(output + .5)));
-                    }
-                }
-                // add new values to output images
-                outputstack[0].addSlice(label, newpixels[0]);
-                outputstack[1].addSlice(label, newpixels[1]);
-                outputstack[2].addSlice(label, newpixels[2]);
-            }
-            new ImagePlus(title + "-(Hematoxylin Stain)", outputstack[0]).show();
-            new ImagePlus(title + "-(DAB Stain)", outputstack[1]).show();
-            //new ImagePlus(title+"-(Colour_3)",outputstack[2]).show();
+        }  else if (myMode.equals(MODES[1])) {
 
             ThresholdAdjuster ta = new ThresholdAdjuster();
             ta.run();
+
         }
-    } //end nuclear
+    }
 
     void getmeanRGBODfromROI(int i, double[] rgbOD, ImagePlus imp) {
         //get a ROI and its mean optical density. GL
@@ -582,5 +365,21 @@ public class IHC_Profiler implements PlugIn {
         xyzf[1] = p.y;
         xyzf[2] = imp.getCurrentSlice() - 1;
         xyzf[3] = ic.getModifiers();
+    }
+
+    private void makeVectorHDAB(double[] MODx, double[] MODy, double[] MODz) {
+        // 3,3-diamino-benzidine tetrahydrochloride
+        // Haem matrix
+        MODx[0] = 0.684;
+        MODy[0] = 0.696;
+        MODz[0] = 0.183;
+        // DAB matrix
+        MODx[1] = 0.250;
+        MODy[1] = 0.500;
+        MODz[1] = 0.850;
+        // Zero matrix
+        MODx[2] = 0.0;
+        MODy[2] = 0.0;
+        MODz[2] = 0.0;
     }
 }
